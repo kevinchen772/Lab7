@@ -45,6 +45,22 @@ function initializeServiceWorker() {
   // We first must register our ServiceWorker here before any of the code in
   // sw.js is executed.
   // B1. TODO - Check if 'serviceWorker' is supported in the current browser
+  const registerServiceWorker = async () =>{
+    if ("serviceWorker" in navigator) {
+    window.addEventListener('load', async(event) => {
+      try {
+        const registration = await navigator.serviceWorker.register("./sw.js", {
+          scope: "/",
+        });
+        if (registration.active) {
+          console.log("Service worker sucessfully registerd");
+        }
+      } catch (error) {
+        console.error(`Registration failed with ${error}`);
+      }
+    })
+  }}
+  registerServiceWorker();
   // B2. TODO - Listen for the 'load' event on the window object.
   // Steps B3-B6 will be *inside* the event listener's function created in B2
   // B3. TODO - Register '/sw.js' as a service worker (The MDN article
@@ -68,6 +84,8 @@ async function getRecipes() {
   // EXPOSE - START (All expose numbers start with A)
   // A1. TODO - Check local storage to see if there are any recipes.
   //            If there are recipes, return them.
+  let recipe = JSON.parse(localStorage.getItem('recipes'));
+  if (recipe != null && recipe.length != 0) {return recipe;}
   /**************************/
   // The rest of this method will be concerned with requesting the recipes
   // from the network
@@ -77,6 +95,25 @@ async function getRecipes() {
   //            function (we call these callback functions). That function will
   //            take two parameters - resolve, and reject. These are functions
   //            you can call to either resolve the Promise or Reject it.
+  recipe = [];
+  let promise = new Promise(async(resolve, reject) => {
+    for (let i = 0; i < RECIPE_URLS.length; i++) {
+      try {
+        let response = await fetch(RECIPE_URLS[i]);
+        let newrecipe = await response.json();
+        recipe.push(newrecipe);
+        if(i===RECIPE_URLS.length-1) {
+          saveRecipesToStorage(recipe);
+          resolve(recipe);
+        }
+      } catch (error) {
+        console.error(error);
+        reject(error);
+      }
+    }
+    
+  });
+  return promise;
   /**************************/
   // A4-A11 will all be *inside* the callback function we passed to the Promise
   // we're returning
@@ -100,6 +137,7 @@ async function getRecipes() {
   //            resolve() method.
   // A10. TODO - Log any errors from catch using console.error
   // A11. TODO - Pass any errors to the Promise's reject() function
+  
 }
 
 /**
